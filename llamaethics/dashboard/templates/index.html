@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LlamaEthics Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .navbar {
+            background-color: #7b4397;
+            background-image: linear-gradient(to right, #7b4397, #dc2430);
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: none;
+            border-radius: 0.5rem;
+        }
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            padding: 1rem;
+            font-weight: 600;
+        }
+        .tab-pane {
+            padding: 20px;
+        }
+        .btn-primary {
+            background-color: #7b4397;
+            border-color: #7b4397;
+        }
+        .btn-primary:hover {
+            background-color: #6a3a83;
+            border-color: #6a3a83;
+        }
+        #uploadForm {
+            border: 2px dashed #ddd;
+            padding: 2rem;
+            text-align: center;
+            background-color: #fff;
+            border-radius: 0.5rem;
+        }
+        .metric-card {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            background-color: #fff;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #7b4397;
+        }
+        .metric-label {
+            color: #666;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 0.25rem;
+            font-size: 0.85rem;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-check-circle me-2"></i>
+                LlamaEthics Dashboard
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://github.com/llamasearch/LlamaEthics" target="_blank">
+                            <i class="fab fa-github me-1"></i> GitHub
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="https://llamaethics.readthedocs.io/" target="_blank">
+                            <i class="fas fa-book me-1"></i> Docs
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs" id="myTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload" type="button" role="tab">Upload Dataset</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="bias-tab" data-bs-toggle="tab" data-bs-target="#bias" type="button" role="tab">Bias Detection</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="explainability-tab" data-bs-toggle="tab" data-bs-target="#explainability" type="button" role="tab">Explainability</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="robustness-tab" data-bs-toggle="tab" data-bs-target="#robustness" type="button" role="tab">Robustness Testing</button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content" id="myTabContent">
+                            <!-- Upload Tab -->
+                            <div class="tab-pane fade show active" id="upload" role="tabpanel" aria-labelledby="upload-tab">
+                                <div class="row">
+                                    <div class="col-md-8 offset-md-2">
+                                        <h3 class="text-center mb-4">Upload Your Dataset</h3>
+                                        <div id="uploadForm">
+                                            <i class="fas fa-cloud-upload-alt fa-3x mb-3" style="color: #7b4397;"></i>
+                                            <p>Drag and drop your dataset here, or click to select a file</p>
+                                            <input type="file" id="fileInput" class="form-control" accept=".csv, .json">
+                                            <small class="text-muted">Supported formats: CSV, JSON</small>
+                                            <div class="mt-3">
+                                                <button id="uploadBtn" class="btn btn-primary">
+                                                    <i class="fas fa-upload me-1"></i> Upload
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div id="datasetInfo" class="mt-4" style="display: none;">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h5>Dataset Information</h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    <table class="table">
+                                                        <tr>
+                                                            <th>Filename:</th>
+                                                            <td id="filename"></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>Rows:</th>
+                                                            <td id="rows"></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th>Columns:</th>
+                                                            <td id="columns"></td>
+                                                        </tr>
+                                                    </table>
+                                                    <h6>Column Information:</h6>
+                                                    <table class="table table-sm" id="columnTable">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Column Name</th>
+                                                                <th>Data Type</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody></tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Bias Detection Tab -->
+                            <div class="tab-pane fade" id="bias" role="tabpanel" aria-labelledby="bias-tab">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <h3 class="mb-4">Bias Detection</h3>
+                                        <div id="biasForm">
+                                            <div class="alert alert-info" role="alert">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                Please upload a dataset first, then select the sensitive attribute and target attribute to analyze for bias.
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-5">
+                                                    <div class="form-group mb-3">
+                                                        <label for="sensitiveAttribute">Sensitive Attribute:</label>
+                                                        <select id="sensitiveAttribute" class="form-select" disabled>
+                                                            <option>Upload a dataset first</option>
+                                                        </select>
+                                                        <small class="text-muted">The attribute to check for bias (e.g., gender, race)</small>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-5">
+                                                    <div class="form-group mb-3">
+                                                        <label for="targetAttribute">Target Attribute:</label>
+                                                        <select id="targetAttribute" class="form-select" disabled>
+                                                            <option>Upload a dataset first</option>
+                                                        </select>
+                                                        <small class="text-muted">The outcome attribute (e.g., hired, approved)</small>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="form-group mb-3">
+                                                        <label>&nbsp;</label>
+                                                        <button id="analyzeBiasBtn" class="btn btn-primary form-control" disabled>
+                                                            <i class="fas fa-search me-1"></i> Analyze
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div id="biasResults" style="display: none;">
+                                            <hr>
+                                            <h4>Bias Analysis Results</h4>
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <div class="metric-card">
+                                                        <div class="metric-label">Demographic Parity Difference</div>
+                                                        <div class="metric-value" id="demographicParityValue">-</div>
+                                                        <small class="text-muted">Difference in positive prediction rates between groups</small>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="metric-card">
+                                                        <div class="metric-label">Equal Opportunity Difference</div>
+                                                        <div class="metric-value" id="equalOpportunityValue">-</div>
+                                                        <small class="text-muted">Difference in true positive rates between groups</small>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="metric-card">
+                                                        <div class="metric-label">Disparate Impact Ratio</div>
+                                                        <div class="metric-value" id="disparateImpactValue">-</div>
+                                                        <small class="text-muted">Ratio of positive prediction rates (min/max)</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row mt-4">
+                                                <div class="col-md-6">
+                                                    <div id="demographicParityPlot" style="height: 400px;"></div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div id="equalOpportunityPlot" style="height: 400px;"></div>
+                                                </div>
+                                            </div>
+                                            <div class="row mt-4">
+                                                <div class="col-md-12">
+                                                    <div class="card">
+                                                        <div class="card-header">
+                                                            <h5>Fairness Report</h5>
+                                                        </div>
+                                                        <div class="card-body">
+                                                            <pre id="fairnessReport"></pre>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Explainability Tab -->
+                            <div class="tab-pane fade" id="explainability" role="tabpanel" aria-labelledby="explainability-tab">
+                                <h3 class="mb-4">Model Explainability</h3>
+                                <div class="alert alert-warning" role="alert">
+                                    <i class="fas fa-tools me-2"></i>
+                                    Model explainability functionality is coming soon! This feature will allow you to upload a model and explain its predictions.
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5>Feature Importance</h5>
+                                            </div>
+                                            <div class="card-body text-center">
+                                                <i class="fas fa-chart-bar fa-5x mb-3" style="color: #7b4397;"></i>
+                                                <p>Understand which features have the greatest impact on your model's predictions.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5>Individual Prediction Explanations</h5>
+                                            </div>
+                                            <div class="card-body text-center">
+                                                <i class="fas fa-search-plus fa-5x mb-3" style="color: #7b4397;"></i>
+                                                <p>Explain why your model made specific predictions for individual instances.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Robustness Testing Tab -->
+                            <div class="tab-pane fade" id="robustness" role="tabpanel" aria-labelledby="robustness-tab">
+                                <h3 class="mb-4">Robustness Testing</h3>
+                                <div class="alert alert-warning" role="alert">
+                                    <i class="fas fa-tools me-2"></i>
+                                    Robustness testing functionality is coming soon! This feature will allow you to test your model's performance under different noise conditions and edge cases.
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5>Noise Resilience</h5>
+                                            </div>
+                                            <div class="card-body text-center">
+                                                <i class="fas fa-random fa-5x mb-3" style="color: #7b4397;"></i>
+                                                <p>Test how your model performs when input data contains various types and levels of noise.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5>Edge Case Testing</h5>
+                                            </div>
+                                            <div class="card-body text-center">
+                                                <i class="fas fa-exclamation-triangle fa-5x mb-3" style="color: #7b4397;"></i>
+                                                <p>Evaluate your model's performance on edge cases and unusual input patterns.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-light text-center p-4 mt-5">
+        <div class="container">
+            <p class="mb-0">
+                <small class="text-muted">
+                    &copy; 2023 LlamaSearch AI Team. LlamaEthics is open source and available under the MIT License.
+                </small>
+            </p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap and jQuery JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Dashboard JS -->
+    <script>
+        $(document).ready(function() {
+            let currentFilename = null;
+            
+            // Handle file upload
+            $('#uploadBtn').click(function() {
+                const fileInput = document.getElementById('fileInput');
+                if (fileInput.files.length === 0) {
+                    alert('Please select a file first.');
+                    return;
+                }
+                
+                const file = fileInput.files[0];
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                // Show loading indicator
+                $(this).html('<span class="spinner-border spinner-border-sm me-1"></span> Uploading...');
+                $(this).prop('disabled', true);
+                
+                $.ajax({
+                    url: '/upload',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        // Reset button
+                        $('#uploadBtn').html('<i class="fas fa-upload me-1"></i> Upload');
+                        $('#uploadBtn').prop('disabled', false);
+                        
+                        if (response.success) {
+                            // Store current filename
+                            currentFilename = response.dataset_info.filename;
+                            
+                            // Display dataset info
+                            $('#filename').text(response.dataset_info.filename);
+                            $('#rows').text(response.dataset_info.rows);
+                            $('#columns').text(response.dataset_info.columns);
+                            
+                            // Clear and populate column table
+                            const columnTable = $('#columnTable tbody');
+                            columnTable.empty();
+                            
+                            for (const col of response.dataset_info.column_names) {
+                                const dtype = response.dataset_info.dtypes[col];
+                                columnTable.append(`
+                                    <tr>
+                                        <td>${col}</td>
+                                        <td>${dtype}</td>
+                                    </tr>
+                                `);
+                            }
+                            
+                            // Show dataset info section
+                            $('#datasetInfo').show();
+                            
+                            // Populate dropdown menus for bias detection
+                            const sensitiveAttribute = $('#sensitiveAttribute');
+                            const targetAttribute = $('#targetAttribute');
+                            
+                            sensitiveAttribute.empty();
+                            targetAttribute.empty();
+                            
+                            for (const col of response.dataset_info.column_names) {
+                                sensitiveAttribute.append(`<option value="${col}">${col}</option>`);
+                                targetAttribute.append(`<option value="${col}">${col}</option>`);
+                            }
+                            
+                            // Enable dropdowns and analyze button
+                            sensitiveAttribute.prop('disabled', false);
+                            targetAttribute.prop('disabled', false);
+                            $('#analyzeBiasBtn').prop('disabled', false);
+                        }
+                    },
+                    error: function(xhr) {
+                        // Reset button
+                        $('#uploadBtn').html('<i class="fas fa-upload me-1"></i> Upload');
+                        $('#uploadBtn').prop('disabled', false);
+                        
+                        let errorMsg = 'Error uploading file';
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMsg = xhr.responseJSON.error;
+                        }
+                        alert(errorMsg);
+                    }
+                });
+            });
+            
+            // Handle bias analysis
+            $('#analyzeBiasBtn').click(function() {
+                if (!currentFilename) {
+                    alert('Please upload a dataset first.');
+                    return;
+                }
+                
+                const sensitiveAttribute = $('#sensitiveAttribute').val();
+                const targetAttribute = $('#targetAttribute').val();
+                
+                if (sensitiveAttribute === targetAttribute) {
+                    alert('Sensitive attribute and target attribute must be different.');
+                    return;
+                }
+                
+                // Show loading indicator
+                $(this).html('<span class="spinner-border spinner-border-sm me-1"></span> Analyzing...');
+                $(this).prop('disabled', true);
+                
+                $.ajax({
+                    url: '/analyze_bias',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        filename: currentFilename,
+                        sensitive_attribute: sensitiveAttribute,
+                        target_attribute: targetAttribute
+                    }),
+                    success: function(response) {
+                        // Reset button
+                        $('#analyzeBiasBtn').html('<i class="fas fa-search me-1"></i> Analyze');
+                        $('#analyzeBiasBtn').prop('disabled', false);
+                        
+                        if (response.success) {
+                            // Update metric values
+                            $('#demographicParityValue').text(
+                                response.bias_metrics.demographic_parity.max_difference.toFixed(4)
+                            );
+                            
+                            $('#equalOpportunityValue').text(
+                                response.bias_metrics.equal_opportunity.max_difference.toFixed(4)
+                            );
+                            
+                            $('#disparateImpactValue').text(
+                                response.bias_metrics.disparate_impact.min_ratio.toFixed(4)
+                            );
+                            
+                            // Update fairness report
+                            $('#fairnessReport').text(response.report);
+                            
+                            // Render plotly plots
+                            Plotly.newPlot(
+                                'demographicParityPlot', 
+                                JSON.parse(response.plotly_figs.demographic_parity).data,
+                                JSON.parse(response.plotly_figs.demographic_parity).layout
+                            );
+                            
+                            Plotly.newPlot(
+                                'equalOpportunityPlot',
+                                JSON.parse(response.plotly_figs.equal_opportunity).data,
+                                JSON.parse(response.plotly_figs.equal_opportunity).layout
+                            );
+                            
+                            // Show results section
+                            $('#biasResults').show();
+                        }
+                    },
+                    error: function(xhr) {
+                        // Reset button
+                        $('#analyzeBiasBtn').html('<i class="fas fa-search me-1"></i> Analyze');
+                        $('#analyzeBiasBtn').prop('disabled', false);
+                        
+                        let errorMsg = 'Error analyzing bias';
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMsg = xhr.responseJSON.error;
+                        }
+                        alert(errorMsg);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html> 
